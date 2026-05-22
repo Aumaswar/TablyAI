@@ -1,0 +1,235 @@
+<div class="container">
+
+  <h1>AI Data Analyst</h1>
+
+  <!-- LOGIN -->
+
+  <div class="card">
+
+    <h2>Application Login</h2>
+
+    <div class="row">
+
+      <input
+        type="text"
+        placeholder="App Username"
+        [(ngModel)]="appUsername"
+      />
+
+      <input
+        type="password"
+        placeholder="App Password"
+        [(ngModel)]="appPassword"
+      />
+
+      <button (click)="login()">
+        Login
+      </button>
+
+      <button (click)="logout()">
+        Logout
+      </button>
+
+    </div>
+
+  </div>
+
+  <!-- DATABASE CONNECTION -->
+
+  <div class="card">
+
+    <h2>Database Connection</h2>
+
+    <div class="row">
+
+      <select [(ngModel)]="dbType">
+
+        <option value="mysql">
+          MySQL
+        </option>
+
+        <option value="mssql">
+          MSSQL
+        </option>
+
+      </select>
+
+      <input
+        type="text"
+        placeholder="Host"
+        [(ngModel)]="host"
+      />
+
+      <input
+        type="text"
+        placeholder="DB Username"
+        [(ngModel)]="username"
+      />
+
+      <input
+        type="password"
+        placeholder="DB Password"
+        [(ngModel)]="password"
+      />
+
+      <input
+        type="text"
+        placeholder="Database Name"
+        [(ngModel)]="database"
+      />
+
+      <button (click)="connectDB()">
+        Connect Database
+      </button>
+
+    </div>
+
+  </div>
+
+  <!-- METADATA -->
+
+  <div class="card">
+
+    <h2>Metadata Management</h2>
+
+    <div class="row">
+
+      <input
+        type="text"
+        placeholder="Table Name"
+        [(ngModel)]="metadataTable"
+      />
+
+      <input
+        type="text"
+        placeholder="Column Name"
+        [(ngModel)]="metadataColumn"
+      />
+
+      <input
+        type="text"
+        placeholder="Column Meaning"
+        [(ngModel)]="metadataDescription"
+      />
+
+      <button (click)="saveMetadata()">
+        Save Metadata
+      </button>
+
+    </div>
+
+  </div>
+
+  <!-- AI QUERY -->
+
+  <div class="card">
+
+    <h2>AI Query</h2>
+
+    <div class="row">
+
+      <input
+        class="query-input"
+        type="text"
+        placeholder="Ask anything about your database..."
+        [(ngModel)]="question"
+      />
+
+      <button (click)="askAI()">
+        Ask AI
+      </button>
+
+    </div>
+
+  </div>
+
+  <!-- LOAD SCHEMA -->
+
+  <button (click)="loadSchema()">
+    Load Database Schema
+  </button>
+
+  <!-- LOADING -->
+
+  <div
+    class="loading"
+    *ngIf="loading"
+  >
+
+    Thinking...
+
+  </div>
+
+  <!-- AI RESPONSE -->
+
+  <div
+    class="result-box"
+    *ngIf="responseData && !loading"
+  >
+
+    <h2>Human Response</h2>
+
+    <p>
+      {{ responseData.human_response }}
+    </p>
+
+    <h2>Generated SQL</h2>
+
+    <pre>
+{{ responseData.generated_sql }}
+    </pre>
+
+    <h2>Results</h2>
+
+    <table *ngIf="responseData.result?.length">
+
+      <tr>
+
+        <th *ngFor="let key of objectKeys(responseData.result[0])">
+
+          {{ key }}
+
+        </th>
+
+      </tr>
+
+      <tr *ngFor="let row of responseData.result">
+
+        <td *ngFor="let key of objectKeys(row)">
+
+          {{ row[key] }}
+
+        </td>
+
+      </tr>
+
+    </table>
+
+    <div *ngIf="responseData.error">
+
+      <h2>Error</h2>
+
+      <pre>
+{{ responseData.error }}
+      </pre>
+
+    </div>
+
+  </div>
+
+  <!-- SCHEMA -->
+
+  <div
+    *ngIf="schemaData"
+    class="result-box"
+  >
+
+    <h2>Database Schema</h2>
+
+    <pre>
+{{ schemaData.schema }}
+    </pre>
+
+  </div>
+
+</div>
