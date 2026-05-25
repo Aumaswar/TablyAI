@@ -28,7 +28,7 @@ app.add_middleware(
     CORSMiddleware,
 
     allow_origins=[
-        "http://localhost:4200"
+        "*"
     ],
 
     allow_credentials=True,
@@ -37,6 +37,14 @@ app.add_middleware(
 
     allow_headers=["*"]
 
+)
+
+APP_DB_URL = (
+    "mssql+pyodbc://Narci:6767"
+    "@localhost/company_db"
+    "?driver=ODBC+Driver+18+for+SQL+Server"
+    "&TrustServerCertificate=yes"
+    "&Encrypt=no"
 )
 
 CURRENT_DB_URL = ""
@@ -176,15 +184,9 @@ def login(data: LoginRequest):
 
     global CURRENT_DB_URL
 
-    if CURRENT_DB_URL == "":
-
-        return {
-            "error": "No database connected"
-        }
-
     try:
 
-        engine = create_engine(CURRENT_DB_URL)
+        engine = create_engine(APP_DB_URL)
 
         with engine.connect() as connection:
 
@@ -251,11 +253,28 @@ def login(data: LoginRequest):
 
 @app.post("/save-metadata")
 def save_metadata(
-    data: MetadataInput
+    data: MetadataInput,
+    authorization: str = Header(None)
 ):
 
     global CURRENT_DB_URL
     global SCHEMA_CACHE
+
+    user = authenticate_user(
+        authorization
+    )
+
+    if user is None:
+
+        return {
+            "error": "Unauthorized"
+        }
+
+    if user["role"] != "admin":
+
+        return {
+            "error": "Admin access required"
+        }
 
     if CURRENT_DB_URL == "":
 
@@ -265,8 +284,7 @@ def save_metadata(
 
     try:
 
-        engine = create_engine(CURRENT_DB_URL)
-
+        engine = create_engine(APP_DB_URL)
         with engine.begin() as connection:
 
             query = text("""
@@ -318,29 +336,22 @@ def save_metadata(
 
         }
 
-        connection.commit()
-
-        SCHEMA_CACHE.clear()
-
-        return {
-
-            "message": "Metadata saved successfully"
-
-        }
-
-    except Exception as e:
-
-        return {
-
-            "error": str(e)
-
-        }
-
-
 @app.get("/metadata")
-def get_metadata():
+def get_metadata(
+    authorization: str = Header(None)
+):
 
     global CURRENT_DB_URL
+
+    user = authenticate_user(
+        authorization
+    )
+
+    if user is None:
+
+        return {
+            "error": "Unauthorized"
+        }
 
     if CURRENT_DB_URL == "":
 
@@ -350,8 +361,8 @@ def get_metadata():
 
     try:
 
-        engine = create_engine(CURRENT_DB_URL)
-        print(CURRENT_DB_URL)
+        engine = create_engine(APP_DB_URL)
+
         with engine.connect() as connection:
 
             query = text("""
@@ -413,13 +424,13 @@ def connect_db(data: DatabaseConnection):
 
     elif data.db_type == "mssql":
 
-        db_url = (
-            f"mssql+pyodbc://@{host}/{database}"
-            "?driver=ODBC+Driver+18+for+SQL+Server"
-            "&trusted_connection=yes"
-            "&TrustServerCertificate=yes"
-            "&Encrypt=no"
-        )
+            db_url = (
+        f"mssql+pyodbc://{username}:{password}"
+        f"@{host}/{database}"
+        "?driver=ODBC+Driver+18+for+SQL+Server"
+        "&TrustServerCertificate=yes"
+        "&Encrypt=no"
+    )
 
     else:
 
@@ -479,43 +490,97 @@ def get_schema():
         return {
             "error": str(e)
         }
-
 @app.get("/tables")
 def get_tables():
+
     global CURRENT_DB_URL
 
     if CURRENT_DB_URL == "":
+
         return []
+
     engine = create_engine(CURRENT_DB_URL)
+
     inspector = inspect(engine)
-    return inspector.get_table_names()
+
+    all_tables = []
+
+    schemas = inspector.get_schema_names()
+
+    for schema in schemas:
+
+        if schema in [
+            "INFORMATION_SCHEMA",
+            "sys"
+        ]:
+            continue
+
+        tables = inspector.get_table_names(
+            schema=schema
+        )
+
+        for table in tables:
+
+            all_tables.append(
+                f"{schema}.{table}"
+            )
+
+    return sorted(all_tables)
 
 @app.get("/columns/{table_name}")
-def get_columns(table_name:str):
+def get_columns(table_name: str):
 
     global CURRENT_DB_URL
 
     if CURRENT_DB_URL == "":
+
         return []
-    
+
     engine = create_engine(CURRENT_DB_URL)
 
-    inspector = inpect(engine)
+    inspector = inspect(engine)
 
-    columns = inspector.get_columns(table_name)
+    if "." in table_name:
 
-    return[
+        schema, table = table_name.split(".", 1)
+
+        columns = inspector.get_columns(
+            table,
+            schema=schema
+        )
+
+    else:
+
+        columns = inspector.get_columns(
+            table_name
+        )
+
+    return [
+
         column["name"]
+
         for column in columns
+
     ]
 
-
-
 @app.get("/query")
-def query(question: str):
+def query(
+    question: str,
+    authorization: str = Header(None)
+):
 
     global CURRENT_DB_URL
     global CURRENT_DB_TYPE
+
+    user = authenticate_user(
+        authorization
+    )
+
+    if user is None:
+
+        return {
+            "error": "Unauthorized"
+        }
 
     if CURRENT_DB_URL == "":
 
@@ -527,11 +592,15 @@ def query(question: str):
 
         start_time = time.time()
 
-        engine = create_engine(CURRENT_DB_URL)
+        engine = create_engine(
+            CURRENT_DB_URL
+        )
 
         compact_schema = get_cached_schema(
             CURRENT_DB_URL
         )
+
+        # KEEP ALL YOUR EXISTING AI SQL CODE BELOW THIS
 
         base_prompt = f"""
 
@@ -541,6 +610,15 @@ def query(question: str):
         {compact_schema}
 
         Rules:
+        IMPORTANT:
+
+        Before writing SQL:
+
+        -1. Verify every column exists in the schema.
+        -2. Verify every table exists in the schema.
+        -3. If a required column is not present, use joins to find the information.
+        -4. Never assume a column exists because of its name.
+        -5. Use only exact column names from the schema.
         - Return ONLY SQL
         - No markdown
         - No explanation
@@ -705,20 +783,35 @@ def query(question: str):
 
                 prompt = base_prompt + f"""
 
-                Previous SQL failed.
+                    The previous SQL failed.
 
-                SQL:
-                {generated_sql}
+                    User Question:
+                    {question}
 
-                Error:
-                {str(sql_error)}
+                    Failed SQL:
+                    {generated_sql}
 
-                Fix the SQL.
+                    Database Error:
+                    {str(sql_error)}
 
-                User Question:
-                {question}
+                    IMPORTANT:
 
-                """
+                    The database error is correct.
+
+                    One or more tables or columns do not exist.
+
+                    Re-read the schema carefully.
+
+                    Rules:
+
+                    - Use ONLY exact table names from the schema.
+                    - Use ONLY exact column names from the schema.
+                    - If a column does not exist, find the correct table using JOINs.
+                    - Do NOT reuse invalid columns.
+                    - Verify every column before using it.
+                    - Return ONLY corrected SQL.
+
+                    """
 
         return {
 
