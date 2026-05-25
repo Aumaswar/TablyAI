@@ -19,6 +19,10 @@ It writes the query, runs it, hands you the results — all locally, no cloud.
 
 <br/>
 
+*Designed & built by **[Aum Aswar](https://github.com/Aumaswar)***
+
+<br/>
+
 </div>
 
 ---
@@ -89,5 +93,11 @@ Open `http://localhost:4200` and you're in.
 <br/>
 
 *Built for people who have data but not time to write SQL.*
+
+<br/>
+
+---
+
+<sub>© 2026 Aum Aswar · Released under MIT License</sub>
 
 </div>
