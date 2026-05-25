@@ -3,7 +3,7 @@ import { Component, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import { FormsModule } from '@angular/forms';
-
+import * as XLSX from 'xlsx';
 import {
   HttpClient,
   HttpClientModule,
@@ -29,7 +29,8 @@ import {
 })
 
 export class AppComponent {
-
+  
+  
   host = '';
 
   username = '';
@@ -59,14 +60,91 @@ export class AppComponent {
   metadataColumn = '';
 
   metadataDescription = '';
+  
+  tables: string[] = [];
 
+  columns: string[] = [];
+  loadTables() {
+
+  this.http.get<any>(
+    'http://localhost:8000/tables'
+  ).subscribe({
+
+    next: (response) => {
+
+      this.tables = response;
+
+    },
+
+    error: (error) => {
+
+      console.error(error);
+
+    }
+
+  });
+
+}
+loadColumns() {
+
+  this.columns = [];
+
+  this.metadataColumn = '';
+
+  if (!this.metadataTable) {
+
+    return;
+
+  }
+
+  this.http.get<any>(
+    `http://localhost:8000/columns/${this.metadataTable}`
+  ).subscribe({
+
+    next: (response) => {
+
+      this.columns = response;
+
+    },
+
+    error: (error) => {
+
+      console.error(error);
+
+    }
+
+  });
+
+}
   constructor(
 
-    private http: HttpClient,
+  private http: HttpClient,
 
-    private cdr: ChangeDetectorRef
+  private cdr: ChangeDetectorRef
 
-  ) {}
+) {
+
+  this.host =
+    localStorage.getItem(
+      'db_host'
+    ) || '';
+
+  this.username =
+    localStorage.getItem(
+      'db_username'
+    ) || '';
+
+  this.database =
+    localStorage.getItem(
+      'db_database'
+    ) || '';
+
+  this.dbType =
+    localStorage.getItem(
+      'db_type'
+    ) || 'mysql';
+
+}
 
   login() {
 
@@ -89,14 +167,25 @@ export class AppComponent {
       next: (response: any) => {
 
         console.log(response);
+        console.log(
+  "LOGIN RESPONSE:",
+  response
+);
 
+console.log(
+  "ACCESS TOKEN:",
+  response.access_token
+);
         this.token = response.access_token;
 
         localStorage.setItem(
           'token',
           this.token
         );
-
+        console.log(
+    "STORED:",
+    localStorage.getItem("token")
+  );
         alert('Login successful');
 
       },
@@ -123,49 +212,71 @@ export class AppComponent {
 
   }
 
-  connectDB() {
+connectDB() {
 
-    const body = {
+  const body = {
 
-      db_type: this.dbType,
+    db_type: this.dbType,
 
-      host: this.host,
+    host: this.host,
 
-      username: this.username,
+    username: this.username,
 
-      password: this.password,
+    password: this.password,
 
-      database: this.database
+    database: this.database
 
-    };
+  };
 
-    this.http.post(
+  this.http.post(
 
-      'http://localhost:8000/connect-db',
+    'http://localhost:8000/connect-db',
 
-      body
+    body
 
-    ).subscribe({
+  ).subscribe({
 
-      next: (response: any) => {
+    next: (response: any) => {
 
-        console.log(response);
+  console.log(response);
 
-        alert(response.message);
+  localStorage.setItem(
+    'db_host',
+    this.host
+  );
 
-      },
+  localStorage.setItem(
+    'db_username',
+    this.username
+  );
 
-      error: (error) => {
+  localStorage.setItem(
+    'db_database',
+    this.database
+  );
 
-        console.error(error);
+  localStorage.setItem(
+    'db_type',
+    this.dbType
+  );
 
-        alert('Connection failed');
+  alert(response.message);
 
-      }
+  this.loadTables();
 
-    });
+},
 
-  }
+    error: (error) => {
+
+      console.error(error);
+
+      alert('Connection failed');
+
+    }
+
+  });
+
+}
 
   saveMetadata() {
 
@@ -327,5 +438,31 @@ export class AppComponent {
     return Object.keys(obj);
 
   }
+  exportToExcel() {
 
-} 
+  if (!this.responseData?.result?.length) {
+
+    alert('No data to export');
+    return;
+
+  }
+
+  const worksheet = XLSX.utils.json_to_sheet(
+    this.responseData.result
+  );
+
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    'Results'
+  );
+
+  XLSX.writeFile(
+    workbook,
+    'AI_Query_Result.xlsx'
+  );
+
+}
+}

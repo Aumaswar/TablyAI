@@ -94,17 +94,40 @@
 
     <div class="row">
 
-      <input
-        type="text"
-        placeholder="Table Name"
-        [(ngModel)]="metadataTable"
-      />
+      <select
+  [(ngModel)]="metadataTable"
+  (change)="loadColumns()"
+>
 
-      <input
-        type="text"
-        placeholder="Column Name"
-        [(ngModel)]="metadataColumn"
-      />
+  <option value="">
+    Select Table
+  </option>
+
+  <option
+    *ngFor="let table of tables"
+    [value]="table"
+  >
+    {{ table }}
+  </option>
+
+</select>
+
+      <select
+  [(ngModel)]="metadataColumn"
+>
+
+  <option value="">
+    Select Column
+  </option>
+
+  <option
+    *ngFor="let column of columns"
+    [value]="column"
+  >
+    {{ column }}
+  </option>
+
+</select>
 
       <input
         type="text"
@@ -233,3 +256,9 @@
   </div>
 
 </div>
+<button
+  *ngIf="responseData?.result?.length"
+  (click)="exportToExcel()"
+>
+  Export to Excel
+</button>
