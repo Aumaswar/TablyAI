@@ -2,7 +2,7 @@
 
 > Ask your SQL database questions in plain English. It writes the query, runs it, hands you the results.
 
-**[→ View Full Project Page](https://aumaswar.github.io/tablyai/readme.html)**
+**[→ View Full Project Page]([https://aumaswar.github.io/tablyai/readme.html](https://aumaswar.github.io/TablyAI/readme.html))**
 
 ---
 
@@ -41,4 +41,4 @@ Then open `http://localhost:4200`
 
 ---
 
-*Full setup guide, screenshots, and API reference on the **[project page](https://aumaswar.github.io/tablyai/readme.html)**.*
+*Full setup guide, screenshots, and API reference on the **[project page]([https://aumaswar.github.io/tablyai/readme.html](https://aumaswar.github.io/TablyAI/readme.html))**.*
